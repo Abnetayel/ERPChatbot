@@ -1,0 +1,6 @@
+@ERPChatbotAssistant.Server_HostAddress = http://localhost:5126
+
+GET {{ERPChatbotAssistant.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
