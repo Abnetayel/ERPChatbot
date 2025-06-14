@@ -1,28 +1,77 @@
+using Microsoft.EntityFrameworkCore;
+using ERPChatbotAssistant.Server.Data;
+using ERPChatbotAssistant.Server.Services;
+using Microsoft.OpenApi.Models;
+using System.Text.Json.Serialization;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.WriteIndented = true;
+    });
 
-builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddEndpointsApiExplorer();
+
+// Configure Swagger
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { 
+        Title = "ERP Chatbot Assistant API", 
+        Version = "v1",
+        Description = "API for the ERP Chatbot Assistant"
+    });
+});
+
+// Add DbContext
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Add ChatService
+builder.Services.AddScoped<IChatService, ChatService>();
+
+// Add CORS
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(builder =>
+    {
+        builder.WithOrigins(
+            "http://localhost:3000",
+            "https://localhost:3000",
+            "http://localhost:5173",
+            "https://localhost:5173"
+        )
+        .AllowAnyMethod()
+        .AllowAnyHeader()
+        .AllowCredentials();
+    });
+});
 
 var app = builder.Build();
-
-app.UseDefaultFiles();
-app.MapStaticAssets();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "ERP Chatbot Assistant API V1");
+        c.RoutePrefix = "swagger";
+    });
+    
+    // Disable HTTPS redirection in development
+    app.UseDeveloperExceptionPage();
+}
+else
+{
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
-
+app.UseCors();
 app.UseAuthorization();
-
 app.MapControllers();
-
-app.MapFallbackToFile("/index.html");
 
 app.Run();
