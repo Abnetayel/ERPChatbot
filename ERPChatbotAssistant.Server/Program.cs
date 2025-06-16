@@ -5,6 +5,8 @@ using Microsoft.OpenApi.Models;
 using System.Text.Json.Serialization;
 
 
+var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+Console.WriteLine(env);
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration

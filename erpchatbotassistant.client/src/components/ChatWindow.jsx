@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { sendMessage, createSession } from '../services/chatService';
+import React, { useState, useRef, useEffect } from 'react';
+import './ChatWindow.css';
+import chatService from '../services/chatService';
 
 // Loading dots animation component
 const LoadingDots = () => (
@@ -25,165 +26,104 @@ const formatTimestamp = (timestamp) => {
 };
 
 const ChatWindow = () => {
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [sessionId, setSessionId] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef(null);
+    const [messages, setMessages] = useState([]);
+    const [inputMessage, setInputMessage] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const messagesEndRef = useRef(null);
+    const [sessionId] = useState(() => {
+        // Generate a new session ID when component mounts
+        return Math.random().toString(36).substring(2, 15);
+    });
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    const initializeChat = async () => {
-      try {
-        const session = await createSession();
-        setSessionId(session.sessionId);
-        setIsLoading(false);
-      } catch (err) {
-        console.error('Failed to initialize chat:', err);
-        setError('Failed to initialize chat. Please try refreshing the page.');
-        setIsLoading(false);
-      }
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
-    initializeChat();
-  }, []);
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    const handleSendMessage = async (e) => {
+        e.preventDefault();
+        if (!inputMessage.trim()) return;
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !sessionId) return;
+        const userMessage = inputMessage.trim();
+        setInputMessage('');
+        
+        // Add user message to chat
+        setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+        
+        setIsLoading(true);
+        try {
+            const response = await chatService.sendMessage(userMessage, sessionId);
+            
+            // Add main response
+            setMessages(prev => [...prev, { 
+                role: 'assistant', 
+                content: response.mainResponse,
+                type: 'main'
+            }]);
 
-    const userMessage = {
-      content: newMessage,
-      isUserMessage: true,
-      timestamp: new Date().toISOString()
+            // Add follow-up question if exists
+            if (response.followUpQuestion) {
+                setMessages(prev => [...prev, { 
+                    role: 'assistant', 
+                    content: response.followUpQuestion,
+                    type: 'follow-up'
+                }]);
+            }
+        } catch (error) {
+            console.error('Error sending message:', error);
+            setMessages(prev => [...prev, { 
+                role: 'assistant', 
+                content: 'Sorry, I encountered an error. Please try again.',
+                type: 'error'
+            }]);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    setMessages(prev => [...prev, userMessage]);
-    setNewMessage('');
-    setIsTyping(true);
-
-    try {
-      const response = await sendMessage(sessionId, newMessage);
-      setIsTyping(false);
-      
-      const botMessage = {
-        content: response.content,
-        isUserMessage: false,
-        timestamp: new Date().toISOString()
-      };
-      
-      setMessages(prev => [...prev, botMessage]);
-    } catch (err) {
-      console.error('Failed to send message:', err);
-      setError('Failed to send message. Please try again.');
-      setIsTyping(false);
-    }
-  };
-
-  if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
-        <div className="bg-white p-8 rounded-lg shadow-md text-center">
-          <h2 className="text-xl font-semibold text-red-600 mb-4">Error</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-100">
-        <div className="bg-white p-8 rounded-lg shadow-md">
-          <LoadingDots />
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col h-screen bg-gray-100">
-      <div className="flex-1 max-w-4xl w-full mx-auto p-4">
-        <div className="bg-white rounded-lg shadow-lg h-full flex flex-col">
-          {/* Header */}
-          <div className="p-4 border-b">
-            <h1 className="text-xl font-semibold text-gray-800">ERP Chatbot Assistant</h1>
-          </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`flex ${message.isUserMessage ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[70%] rounded-lg p-3 ${
-                    message.isUserMessage
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  <div className="text-sm">{message.content}</div>
-                  <div className={`text-xs mt-1 ${message.isUserMessage ? 'text-blue-100' : 'text-gray-500'}`}>
-                    {formatTimestamp(message.timestamp)}
-                  </div>
-                </div>
-              </div>
-            ))}
-            {isTyping && (
-              <div className="flex justify-start">
-                <div className="bg-gray-100 rounded-lg p-3">
-                  <TypingIndicator />
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input */}
-          <form onSubmit={handleSubmit} className="p-4 border-t">
-            <div className="flex space-x-4">
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Type your message..."
-                className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={isTyping}
-              />
-              <button
-                type="submit"
-                disabled={!newMessage.trim() || isTyping}
-                className={`px-4 py-2 rounded-lg ${
-                  !newMessage.trim() || isTyping
-                    ? 'bg-gray-300 cursor-not-allowed'
-                    : 'bg-blue-500 hover:bg-blue-600'
-                } text-white transition-colors`}
-              >
-                Send
-              </button>
+        <div className="chat-window">
+            <div className="chat-messages">
+                {messages.map((message, index) => (
+                    <div 
+                        key={index} 
+                        className={`message ${message.role === 'user' ? 'user-message' : 'bot-message'} ${message.type || ''}`}
+                    >
+                        <div className="message-content">
+                            {message.content}
+                        </div>
+                    </div>
+                ))}
+                {isLoading && (
+                    <div className="message bot-message">
+                        <div className="message-content">
+                            <div className="typing-indicator">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                <div ref={messagesEndRef} />
             </div>
-          </form>
+            <form onSubmit={handleSendMessage} className="chat-input-form">
+                <input
+                    type="text"
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    placeholder="Type your message..."
+                    disabled={isLoading}
+                />
+                <button type="submit" disabled={isLoading || !inputMessage.trim()}>
+                    Send
+                </button>
+            </form>
         </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default ChatWindow; 
