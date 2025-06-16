@@ -22,7 +22,4 @@ public class User
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? LastLogin { get; set; }
-
-    // Navigation properties
-    public virtual ICollection<ChatSession> ChatSessions { get; set; } = new List<ChatSession>();
 } 

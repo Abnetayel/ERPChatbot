@@ -4,8 +4,13 @@ using ERPChatbotAssistant.Server.Services;
 using Microsoft.OpenApi.Models;
 using System.Text.Json.Serialization;
 
-var builder = WebApplication.CreateBuilder(args);
 
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+    .AddEnvironmentVariables();
 // Add services to the container.
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -26,29 +31,37 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Add DbContext
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// Add ChatService
-builder.Services.AddScoped<IChatService, ChatService>();
-
-// Add CORS
+// Configure CORS
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(builder =>
+    options.AddPolicy("AllowFrontend", policy =>
     {
-        builder.WithOrigins(
-            "http://localhost:3000",
-            "https://localhost:3000",
+        policy.WithOrigins(
             "http://localhost:5173",
-            "https://localhost:5173"
+            "https://localhost:5173",
+            "http://localhost:3000",
+            "https://localhost:3000"
         )
         .AllowAnyMethod()
         .AllowAnyHeader()
         .AllowCredentials();
     });
 });
+
+// Configure HttpClient for ModelTrainingService
+builder.Services.AddHttpClient<ModelTrainingService>(client =>
+{
+    client.BaseAddress = new Uri("https://openrouter.ai/");
+    client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
+// Add DbContext
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Add services
+builder.Services.AddScoped<ModelTrainingService>();
 
 var app = builder.Build();
 
@@ -65,13 +78,39 @@ if (app.Environment.IsDevelopment())
     // Disable HTTPS redirection in development
     app.UseDeveloperExceptionPage();
 }
-else
+
+// Use CORS
+app.UseCors("AllowFrontend");
+
+// Use HTTPS redirection in production only
+if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
 
-app.UseCors();
 app.UseAuthorization();
+
 app.MapControllers();
+
+// Configure the port
+app.Urls.Add("http://localhost:5000");
+app.Urls.Add("https://localhost:5001");
+
+// Add error handling middleware
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An unhandled exception occurred");
+        
+        context.Response.StatusCode = 500;
+        await context.Response.WriteAsJsonAsync(new { error = "An unexpected error occurred. Please try again later." });
+    }
+});
 
 app.Run();

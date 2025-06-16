@@ -1,26 +1,27 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ERPChatbotAssistant.Server.Models;
 
 namespace ERPChatbotAssistant.Server.Data;
 
-public class ApplicationDbContext : DbContext
+public class ApplicationDbContext : IdentityDbContext
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
     {
     }
 
-    public DbSet<ChatSession> ChatSessions { get; set; }
-    public DbSet<Message> Messages { get; set; }
+    public DbSet<ConversationHistory> ConversationHistories { get; set; }
+    public DbSet<TrainingData> TrainingData { get; set; }
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    protected override void OnModelCreating(ModelBuilder builder)
     {
-        base.OnModelCreating(modelBuilder);
+        base.OnModelCreating(builder);
 
-        modelBuilder.Entity<ChatSession>()
-            .HasMany(s => s.Messages)
-            .WithOne(m => m.ChatSession)
-            .HasForeignKey(m => m.SessionId)
-            .OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<ConversationHistory>()
+            .HasIndex(c => c.SessionId);
+
+        builder.Entity<TrainingData>()
+            .HasIndex(t => t.Keywords);
     }
 } 
