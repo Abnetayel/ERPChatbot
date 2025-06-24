@@ -42,7 +42,7 @@ const chatService = {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                timeout: 30000 // 30 second timeout
+                timeout: 120000 // 120 second timeout
             });
 
             console.log('Response received:', response.data);
@@ -72,30 +72,7 @@ const chatService = {
         }
     },
 
-    // async getRecentMessages() {
-    //     try {
-    //         console.log('Fetching recent messages');
-    //         const response = await fetch(`${API_URL}/chat/messages`, {
-    //             method: 'GET',
-    //             headers: {
-    //                 'Content-Type': 'application/json',
-    //             },
-    //         });
-
-    //         if (!response.ok) {
-    //             const errorData = await response.json();
-    //             console.error('Failed to fetch messages:', errorData);
-    //             throw new Error(errorData.error || 'Failed to fetch messages');
-    //         }
-
-    //         const data = await response.json();
-    //         console.log('Messages fetched successfully:', data);
-    //         return data;
-    //     } catch (error) {
-    //         console.error('Error fetching messages:', error);
-    //         throw new Error('Failed to fetch messages. Please try again.');
-    //     }
-    // }
+   
 };
 
 export default chatService; 

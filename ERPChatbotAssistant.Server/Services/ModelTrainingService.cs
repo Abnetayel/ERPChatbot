@@ -116,13 +116,13 @@ public class ModelTrainingService
             // Get conversation history
             var conversationHistory = await GetConversationHistory(sessionId);
             _logger.LogDebug("Retrieved {Count} conversation history items", conversationHistory.Count);
-            
-            // Get relevant training data
-            var relevantTrainingData = await GetRelevantTrainingData(userMessage);
-            _logger.LogDebug("Retrieved {Count} relevant training data items", relevantTrainingData.Count);
 
-            // Build the system prompt with training data
-            var systemPrompt = BuildSystemPrompt(relevantTrainingData);
+            // Get top N relevant training data using embeddings
+            var topMatches = await GetTopMatchesByEmbedding(userMessage, 1);
+            _logger.LogDebug("Retrieved {Count} top matches by embedding", topMatches.Count);
+
+            // Build the system prompt with top matches
+            var systemPrompt = BuildSystemPrompt(topMatches);
             _logger.LogDebug("Built system prompt with {Length} characters", systemPrompt.Length);
 
             // Build the messages list
@@ -213,14 +213,21 @@ public class ModelTrainingService
         }
     }
 
-    private async Task<List<TrainingData>> GetRelevantTrainingData(string userMessage)
+    private async Task<List<TrainingData>> GetTopMatchesByEmbedding(string userMessage, int topN)
     {
-        var keywords = userMessage.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        
-        return await _dbContext.TrainingData
-            .Where(t => keywords.Any(k => t.Keywords.ToLower().Contains(k)))
-            .Take(5)
-            .ToListAsync();
+        var apiToken = _configuration["HuggingFace:ApiToken"];
+        var userEmbedding = await EmbeddingsHelper.GetBgeEmbeddingAsync(userMessage, apiToken);
+        var trainingDataList = await _dbContext.TrainingData.ToListAsync();
+        var scored = trainingDataList
+            .Select(td => new {
+                Data = td,
+                Similarity = EmbeddingsHelper.CosineSimilarity(userEmbedding, JsonSerializer.Deserialize<float[]>(td.Embedding))
+            })
+            .OrderByDescending(x => x.Similarity)
+            .Take(topN)
+            .Select(x => x.Data)
+            .ToList();
+        return scored;
     }
 
     private (string mainResponse, string followUpQuestion) SplitResponse(string fullResponse)
@@ -293,6 +300,25 @@ public class ModelTrainingService
         _dbContext.ConversationHistories.Add(conversation);
         await _dbContext.SaveChangesAsync();
     }
+
+    //public async Task UpdateAllTrainingDataEmbeddings()
+    //{
+    //    var apiToken = _configuration["HuggingFace:ApiToken"];
+    //    var trainingDataList = await _dbContext.TrainingData.ToListAsync();
+
+    //    foreach (var data in trainingDataList)
+    //    {
+    //        if (string.IsNullOrEmpty(data.Embedding))
+    //        {
+    //            var embeddingArray = await EmbeddingsHelper.GetBgeEmbeddingAsync(data.Question, apiToken);
+    //            data.Embedding = JsonSerializer.Serialize(embeddingArray);
+    //            _dbContext.TrainingData.Update(data);
+    //            Console.WriteLine($"Updated embedding for: {data.Question}");
+    //        }
+    //    }
+    //    await _dbContext.SaveChangesAsync();
+    //    Console.WriteLine("All embeddings updated!");
+    //}
 }
 
 public class ChatResponse

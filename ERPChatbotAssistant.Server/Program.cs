@@ -39,8 +39,8 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy.WithOrigins(
-            "http://localhost:5173",
-            "https://localhost:5173",
+            "http://localhost:5174",
+            "https://localhost:5174",
             "http://localhost:3000",
             "https://localhost:3000"
         )
@@ -114,5 +114,10 @@ app.Use(async (context, next) =>
         await context.Response.WriteAsJsonAsync(new { error = "An unexpected error occurred. Please try again later." });
     }
 });
-
+//using (var scope = app.Services.CreateScope())
+//{
+//    var services = scope.ServiceProvider;
+//    var modelTrainingService = services.GetRequiredService<ModelTrainingService>();
+//    await modelTrainingService.UpdateAllTrainingDataEmbeddings();
+//}
 app.Run();

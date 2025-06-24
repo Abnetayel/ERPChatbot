@@ -21,5 +21,6 @@ namespace ERPChatbotAssistant.Server.Models
         public string Category { get; set; }
         public string Keywords { get; set; }
         public DateTime CreatedAt { get; set; }
+         public string Embedding { get; set; }
     }
 } 

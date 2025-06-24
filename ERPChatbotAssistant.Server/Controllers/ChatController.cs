@@ -39,9 +39,9 @@ public class ChatController : ControllerBase
 
             var response = await _modelTrainingService.GenerateResponse(request.Message, sessionId);
             var timestamp = DateTime.UtcNow;
-            
-            return Ok(new ChatResponse 
-            { 
+
+            return Ok(new ChatResponse
+            {
                 MainResponse = response.MainResponse,
                 FollowUpQuestion = response.FollowUpQuestion,
                 SessionId = sessionId,
@@ -69,4 +69,4 @@ public class ChatResponse
     public string FollowUpQuestion { get; set; }
     public string SessionId { get; set; }
     public DateTime Timestamp { get; set; }
-} 
+}

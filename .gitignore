@@ -298,6 +298,7 @@ FodyWeavers.xsd
 appsettings.Development.json
 appsettings.Production.json
 appsettings.Staging.json
+appsettings.json
 **/secrets.json
 **/secrets.*.json
 **/appsettings.*.json
