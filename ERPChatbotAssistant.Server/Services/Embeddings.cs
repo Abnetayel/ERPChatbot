@@ -24,7 +24,7 @@ public static class EmbeddingsHelper
 
         var json = await response.Content.ReadAsStringAsync();
         var embedding = JsonSerializer.Deserialize<List<float>>(json);
-        return embedding.ToArray();
+        return embedding?.ToArray() ?? Array.Empty<float>();
     }
 
     public static double CosineSimilarity(float[] v1, float[] v2)

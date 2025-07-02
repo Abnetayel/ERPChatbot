@@ -6,7 +6,7 @@ namespace ERPChatbotAssistant.Server.Models
     public class ConversationHistory
     {
         public int Id { get; set; }
-        public string SessionId { get; set; }
+        public required string SessionId { get; set; }
         public string? UserMessage { get; set; }
         public string? BotResponse { get; set; }
         public DateTime Timestamp { get; set; }
@@ -16,11 +16,11 @@ namespace ERPChatbotAssistant.Server.Models
     public class TrainingData
     {
         public int Id { get; set; }
-        public string Question { get; set; }
-        public string Answer { get; set; }
-        public string Category { get; set; }
-        public string Keywords { get; set; }
+        public required string Question { get; set; }
+        public required string Answer { get; set; }
+        public required string Category { get; set; }
+        public required string Keywords { get; set; }
         public DateTime CreatedAt { get; set; }
-         public string Embedding { get; set; }
+        public required string Embedding { get; set; }
     }
 } 

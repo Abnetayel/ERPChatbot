@@ -48,7 +48,7 @@ ERPChatbotAssistant/
 ## Getting Started
 
 ### Prerequisites
-- .NET 7.0 SDK
+- .NET 8.0 SDK
 - Node.js 16+ and npm
 - SQL Server
 
@@ -96,41 +96,30 @@ ERPChatbotAssistant/
 
 ## API Endpoints
 
-### Chat Sessions
-- `POST /api/chat/sessions` - Create new chat session
-- `GET /api/chat/sessions/{id}` - Get chat session
-- `GET /api/chat/sessions/{id}/messages` - Get session messages
-
-### Messages
-- `POST /api/chat/messages` - Send message
-- `GET /api/chat/messages/{id}` - Get specific message
+### training data
+-`http://localhost:5000/api/TrainingData/upload-csv`- upload training csv data
 
 ## Available Bot Commands
 
-1. Time and Date:
-   - "What time is it?"
-   - "What's today's date?"
-   - "Show date and time"
-
-2. Help:
+1. Help:
    - "help" - Shows all available features
 
-3. Inventory:
+2. Inventory:
    - "Check inventory levels"
    - "View inventory reports"
    - "Update inventory"
 
-4. Sales:
+3. Sales:
    - "Create new order"
    - "Track order status"
    - "View sales history"
 
-5. Customer:
+4. Customer:
    - "Search customer"
    - "View customer history"
    - "Update customer details"
 
-6. Reports:
+5. Reports:
    - "Generate sales report"
    - "View inventory report"
    - "Get customer report"
@@ -144,7 +133,7 @@ ERPChatbotAssistant/
 - Hot Module Replacement (HMR)
 
 ### Backend
-- .NET Core 7.0
+- .NET Core 8.0
 - Entity Framework Core
 - SQL Server database
 - Swagger/OpenAPI documentation

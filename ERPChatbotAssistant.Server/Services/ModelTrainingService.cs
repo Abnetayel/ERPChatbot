@@ -12,6 +12,7 @@ using ERPChatbotAssistant.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using ERPChatbotAssistant.Server.Data;
 using System.Text.RegularExpressions;
+using ERPChatbotAssistant.Server.Services;
 
 namespace ERPChatbotAssistant.Server.Services;
 
@@ -27,6 +28,7 @@ public class ModelTrainingService
     private readonly ApplicationDbContext _dbContext;
     private const int MaxHistoryLength = 10; // Maximum number of previous messages to include
     private const double SimilarityThreshold = 0.7; // Minimum similarity score to consider a match
+    private readonly IntentDetectionService _intentDetectionService;
 
     private string BuildSystemPrompt(List<TrainingData> trainingData)
     {
@@ -58,7 +60,8 @@ public class ModelTrainingService
         prompt.AppendLine("8. Use a friendly and helpful tone");
         prompt.AppendLine("9. Format your response naturally, without any special markers or tags");
         prompt.AppendLine("10. If there are multiple options, present them clearly and ask which one the user would prefer");
-
+        prompt.AppendLine("11.Avoid lists or markdown formatting");
+        prompt.AppendLine("12. You are an ERP assistant. Only answer questions related to ERP systems (such as HR, finance, inventory, procurement, etc.). If the question is not related to ERP, politely respond: \"Sorry, I can only help with ERP-related questions.\"");
         return prompt.ToString();
     }
 
@@ -66,12 +69,14 @@ public class ModelTrainingService
         HttpClient httpClient,
         IConfiguration configuration,
         ILogger<ModelTrainingService> logger,
-        ApplicationDbContext dbContext)
+        ApplicationDbContext dbContext,
+        IntentDetectionService intentDetectionService)
     {
         _httpClient = httpClient;
         _configuration = configuration;
         _logger = logger;
         _dbContext = dbContext;
+        _intentDetectionService = intentDetectionService;
 
         // Get API key from configuration
         _apiKey = _configuration["OpenRouter:ApiKey"];
@@ -112,25 +117,20 @@ public class ModelTrainingService
             }
 
             _logger.LogInformation("Generating response for message: {Message} in session: {SessionId}", userMessage, sessionId);
-
             // Get conversation history
             var conversationHistory = await GetConversationHistory(sessionId);
             _logger.LogDebug("Retrieved {Count} conversation history items", conversationHistory.Count);
-
             // Get top N relevant training data using embeddings
-            var topMatches = await GetTopMatchesByEmbedding(userMessage, 1);
+            var topMatches = await GetTopMatchesByEmbedding(userMessage, 3);
             _logger.LogDebug("Retrieved {Count} top matches by embedding", topMatches.Count);
-
             // Build the system prompt with top matches
             var systemPrompt = BuildSystemPrompt(topMatches);
             _logger.LogDebug("Built system prompt with {Length} characters", systemPrompt.Length);
-
             // Build the messages list
             var messages = new List<object>
             {
                 new { role = "system", content = systemPrompt }
             };
-
             // Add conversation history
             foreach (var history in conversationHistory)
             {
@@ -189,7 +189,16 @@ public class ModelTrainingService
                 };
 
                 // Save the conversation
-                await SaveConversation(sessionId, userMessage, fullResponse);
+                var intentResult = _intentDetectionService.DetectIntent(userMessage);
+                var context = new ConversationContext
+                {
+                    Intent = intentResult.Intent,
+                    Entities = intentResult.Entities,
+                    Source = "llm",
+                    State = "completed",
+                    Confidence = intentResult.Confidence
+                };
+                await SaveConversation(sessionId, userMessage, fullResponse, context);
                 
                 _logger.LogInformation("Successfully generated response with follow-up question");
                 
@@ -286,45 +295,27 @@ public class ModelTrainingService
             .ToListAsync();
     }
 
-    private async Task SaveConversation(string sessionId, string userMessage, string botResponse)
+    private async Task SaveConversation(string sessionId, string userMessage, string botResponse, ConversationContext context)
     {
-        var conversation = new ConversationHistory
+        var history = new ConversationHistory
         {
             SessionId = sessionId,
             UserMessage = userMessage,
             BotResponse = botResponse,
             Timestamp = DateTime.UtcNow,
-            Context = JsonSerializer.Serialize(new { ModelId = _modelId })
+            Context = JsonSerializer.Serialize(context)
         };
-
-        _dbContext.ConversationHistories.Add(conversation);
+        _dbContext.ConversationHistories.Add(history);
         await _dbContext.SaveChangesAsync();
     }
-
-    //public async Task UpdateAllTrainingDataEmbeddings()
-    //{
-    //    var apiToken = _configuration["HuggingFace:ApiToken"];
-    //    var trainingDataList = await _dbContext.TrainingData.ToListAsync();
-
-    //    foreach (var data in trainingDataList)
-    //    {
-    //        if (string.IsNullOrEmpty(data.Embedding))
-    //        {
-    //            var embeddingArray = await EmbeddingsHelper.GetBgeEmbeddingAsync(data.Question, apiToken);
-    //            data.Embedding = JsonSerializer.Serialize(embeddingArray);
-    //            _dbContext.TrainingData.Update(data);
-    //            Console.WriteLine($"Updated embedding for: {data.Question}");
-    //        }
-    //    }
-    //    await _dbContext.SaveChangesAsync();
-    //    Console.WriteLine("All embeddings updated!");
-    //}
 }
 
 public class ChatResponse
 {
     public string MainResponse { get; set; } = string.Empty;
     public string FollowUpQuestion { get; set; } = string.Empty;
+    public string SessionId { get; set; } = string.Empty;
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }
 
 public class OpenRouterResponse
