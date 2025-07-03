@@ -4,12 +4,16 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using ERPChatbotAssistant.Server.Models;
 
 public static class EmbeddingsHelper
 {
+
     public static async Task<float[]> GetBgeEmbeddingAsync(string text, string apiToken)
     {
-        var client = new HttpClient();
+        var client = new HttpClient{
+            Timeout = TimeSpan.FromMinutes(5)
+        };
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiToken);
 
         var payload = new
@@ -19,12 +23,24 @@ public static class EmbeddingsHelper
         };
  
         var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-        var response = await client.PostAsync("https://api-inference.huggingface.co/models/BAAI/bge-small-en-v1.5", content);
-        response.EnsureSuccessStatusCode();
+        try
+        {
+            var response = await client.PostAsync("https://api-inference.huggingface.co/models/BAAI/bge-small-en-v1.5", content);
 
-        var json = await response.Content.ReadAsStringAsync();
-        var embedding = JsonSerializer.Deserialize<List<float>>(json);
-        return embedding?.ToArray() ?? Array.Empty<float>();
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                throw new Exception($"HuggingFace API error: {response.StatusCode} - {error}");
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            var embedding = JsonSerializer.Deserialize<List<float>>(json);
+            return embedding?.ToArray() ?? Array.Empty<float>();
+        }
+        catch (TaskCanceledException ex)
+        {
+            throw new Exception("The HuggingFace API request timed out.", ex);
+        }
     }
 
     public static double CosineSimilarity(float[] v1, float[] v2)

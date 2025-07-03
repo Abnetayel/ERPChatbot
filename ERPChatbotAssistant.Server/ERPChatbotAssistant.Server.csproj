@@ -27,4 +27,22 @@
   <ItemGroup>
     <Compile Include="**/*.cs" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="wwwroot\Assets\index-B3KdEzHT.css" />
+    <Content Remove="wwwroot\Assets\index-YKi4FFd8.js" />
+    <Content Remove="wwwroot\Assets\logo-DcnkVDwe.jpg" />
+    <Content Remove="wwwroot\Assets\logo.jpg" />
+    <Content Remove="wwwroot\index.html" />
+    <Content Remove="wwwroot\vite.svg" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="wwwroot\Assets\index-B3KdEzHT.css" />
+    <None Include="wwwroot\Assets\index-YKi4FFd8.js" />
+    <None Include="wwwroot\Assets\logo-DcnkVDwe.jpg" />
+    <None Include="wwwroot\Assets\logo.jpg" />
+    <None Include="wwwroot\index.html" />
+    <None Include="wwwroot\vite.svg" />
+  </ItemGroup>
 </Project>
