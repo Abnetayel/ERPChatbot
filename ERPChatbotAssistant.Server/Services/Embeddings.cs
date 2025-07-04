@@ -12,7 +12,7 @@ public static class EmbeddingsHelper
     public static async Task<float[]> GetBgeEmbeddingAsync(string text, string apiToken)
     {
         var client = new HttpClient{
-            Timeout = TimeSpan.FromMinutes(5)
+            Timeout = TimeSpan.FromMinutes(10)
         };
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiToken);
 
